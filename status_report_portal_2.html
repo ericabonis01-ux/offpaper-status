@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status Report | Off Paper — Play na Gestão</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f9f9ef; --card:#ffffff; --ink:#1f1c40; --muted:#6b6a7d;
+    --line:#e7e6da; --navy:#1f1c40; --lime:#bde52c; --magenta:#bc2e5a;
+    --c-backlog:#a8a6bd; --c-afazer:#bde52c; --c-andamento:#7ec8e3;
+    --c-teste:#bc2e5a; --c-concluido:#1f1c40;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px 60px;}
+
+  /* Header do portal */
+  .topbar{background:var(--navy);margin:0 0 0;padding:22px 20px 0;}
+  .topbar-inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding-bottom:20px;}
+  .brand{display:flex;align-items:center;gap:10px;color:#f9f9ef;font-weight:700;font-size:15px;letter-spacing:.01em;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--lime);}
+  .topbar-divider{width:1px;align-self:stretch;background:rgba(249,249,239,0.18);margin:0 4px;}
+  .topbar-project{color:#f9f9ef;}
+  .topbar-project .label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--lime);font-weight:700;margin-bottom:3px;}
+  .topbar-project .name{font-size:15px;font-weight:600;}
+  .meta{display:flex;gap:18px;margin-top:0;font-size:12.5px;color:#c9c8dc;flex-wrap:wrap;padding:14px 0;border-top:1px solid rgba(249,249,239,0.15);max-width:1080px;margin-left:auto;margin-right:auto;}
+  .meta strong{color:#f9f9ef;}
+
+  /* Sub-nav de abas */
+  .tabs{background:var(--navy);border-radius:0 0 18px 18px;padding:0 20px;margin-bottom:28px;}
+  .tabs-inner{max-width:1080px;margin:0 auto;display:flex;gap:4px;}
+  .tab-btn{background:none;border:none;color:#c9c8dc;font-size:13.5px;font-weight:600;padding:13px 18px;cursor:pointer;border-bottom:3px solid transparent;transition:.15s;font-family:inherit;}
+  .tab-btn:hover{color:#f9f9ef;}
+  .tab-btn.active{color:#f9f9ef;border-bottom-color:var(--lime);}
+
+  section{margin-bottom:32px;}
+  h2{font-size:16px;color:var(--navy);border-left:4px solid var(--lime);padding-left:10px;margin-bottom:14px;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--lime);border-radius:10px;padding:16px;text-align:center;}
+  .kpi .num{font-size:28px;font-weight:700;color:var(--navy);}
+  .kpi .lbl{font-size:12px;color:var(--muted);margin-top:4px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;}
+  tr:last-child td{border-bottom:none;}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}
+  .legend-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13.5px;}
+  .legend-row .pct{color:var(--muted);font-size:12px;}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:20px;background:#f1f1e6;color:var(--muted);font-weight:600;white-space:nowrap;}
+  .tag.wms{background:#eaf7cf;color:#5c7a0f;}
+  .tag.erp{background:#e8e7f2;color:#1f1c40;}
+  .tag.bi{background:#fbeef0;color:#8c2242;}
+  .tag.portal{background:#e8e7f2;color:#3a3568;}
+  .badge-bug{color:var(--magenta);font-weight:600;}
+  .note{font-size:11.5px;color:var(--muted);margin:8px 0 4px;}
+  footer{margin-top:30px;border-top:1px solid var(--line);padding-top:14px;font-size:11.5px;color:var(--muted);}
+  footer p{margin:3px 0;}
+  canvas{max-height:280px;}
+  .see-more{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--navy);text-decoration:none;background:#eef0e2;padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid var(--line);}
+  .see-more:hover{background:var(--lime);}
+  .quick-links{display:flex;gap:12px;margin-top:6px;}
+
+  /* Tab panels */
+  .tabpanel{display:none;}
+  .tabpanel.active{display:block;}
+
+  /* Aba Entregas Concluídas */
+  .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
+  .chip{border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:20px;cursor:pointer;transition:.15s;}
+  .chip.active{background:var(--navy);color:#f9f9ef;border-color:var(--navy);}
+  .search-box{flex:1;min-width:200px;position:relative;}
+  .search-box input{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:inherit;background:var(--card);color:var(--ink);}
+  .search-box input:focus{outline:2px solid var(--lime);outline-offset:-1px;}
+  .result-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  .period-title{font-weight:600;font-size:13px;color:var(--ink);margin:18px 0 6px;padding-top:10px;border-top:1px solid var(--line);}
+  .period-title:first-child{margin-top:0;padding-top:0;border-top:none;}
+  table td.card-num{cursor:pointer;color:var(--navy);font-weight:700;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;}
+  table td.card-num:hover{color:var(--magenta);}
+  table td.expand-cell{cursor:pointer;width:22px;text-align:center;color:var(--muted);}
+  .expand-icon{display:inline-block;width:16px;height:16px;line-height:15px;border:1px solid var(--line);border-radius:4px;font-size:12px;font-weight:700;color:var(--muted);}
+  tr.summary-row{display:none;}
+  tr.summary-row.open{display:table-row;}
+  tr.summary-row td{background:#f4f4e8;font-size:12.5px;line-height:1.5;color:var(--ink);padding:10px 12px;border-bottom:2px solid var(--lime);}
+  .setor-lbl{color:var(--magenta);font-weight:700;}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:13.5px;}
+
+  /* Aba Em Andamento — kanban */
+  .kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+  .kanban-col{background:#f4f4e8;border-radius:10px;padding:12px;}
+  .kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.02em;padding:4px 6px 12px;}
+  .kanban-col-head .count{background:var(--navy);color:#f9f9ef;font-size:11px;font-weight:700;padding:1px 8px;border-radius:12px;}
+  .kanban-col[data-status="afazer"] .kanban-col-head{border-bottom:3px solid var(--c-afazer);}
+  .kanban-col[data-status="andamento"] .kanban-col-head{border-bottom:3px solid var(--c-andamento);}
+  .kanban-col[data-status="teste"] .kanban-col-head{border-bottom:3px solid var(--c-teste);}
+  .kanban-card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:11px 12px;margin-bottom:10px;font-size:13px;line-height:1.4;}
+  .kanban-card .knum{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:5px;}
+  .kanban-card .ktitle{color:var(--ink);}
+
+  @media (max-width:820px){
+    .grid2{grid-template-columns:1fr;}
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .kanban{grid-template-columns:1fr;}
+    .tabs-inner{overflow-x:auto;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><span class="dot"></span>Play na Gestão</div>
+    <div class="topbar-divider"></div>
+    <div class="topbar-project">
+      <div class="label">Área do Cliente</div>
+      <div class="name">Off Paper — Status Report de Implantação</div>
+    </div>
+  </div>
+  <div class="meta">
+    <span><strong>Data de referência:</strong> 17/08/2026</span>
+    <span><strong>Responsável:</strong> Erica Bonis (Gerente de Projetos)</span>
+    <span><strong>Fonte:</strong> API do Trello — board "Implant. Off Paper" (dados ao vivo)</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tabs-inner">
+    <button class="tab-btn active" data-tab="visao-geral" onclick="showTab('visao-geral', this)">Visão Geral</button>
+    <button class="tab-btn" data-tab="concluidas" onclick="showTab('concluidas', this)">Entregas Concluídas</button>
+    <button class="tab-btn" data-tab="andamento" onclick="showTab('andamento', this)">Em Andamento</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===================== ABA 1: VISÃO GERAL ===================== -->
+  <div class="tabpanel active" id="tab-visao-geral">
+
+    <section>
+      <h2>Panorama Geral do Board</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="num">182</div><div class="lbl">Total de cards abertos</div></div>
+        <div class="kpi"><div class="num">122</div><div class="lbl">Concluídos</div></div>
+        <div class="kpi"><div class="num">60</div><div class="lbl">Em aberto</div></div>
+        <div class="kpi"><div class="num">67,0%</div><div class="lbl">% de fechamento</div></div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card">
+        <h2 style="margin-top:0;">Distribuição por Status</h2>
+        <div class="legend-row"><span><span class="dot" style="background:var(--c-backlog);"></span>Backlog</span><span>45 <span class="pct">(24,7%)</span></span></div>
+        <div class="legend-row"><span><span class="dot" style="background:var(--c-afazer);"></span>A Fazer</span><span>5 <span class="pct">(2,7%)</span></span></div>
+        <div class="legend-row"><span><span class="dot" style="background:var(--c-andamento);"></span>Em andamento</span><span>9 <span class="pct">(4,9%)</span></span></div>
+        <div class="legend-row"><span><span class="dot" style="background:var(--c-teste);"></span>Fase de teste</span><span>1 <span class="pct">(0,5%)</span></span></div>
+        <div class="legend-row"><span><span class="dot" style="background:var(--c-concluido);"></span>Concluído 🎉</span><span>122 <span class="pct">(67,0%)</span></span></div>
+        <canvas id="statusChart" style="margin-top:14px;"></canvas>
+      </div>
+      <div class="card">
+        <h2 style="margin-top:0;">Evolução de Conclusões (Jan–Ago/2026)</h2>
+        <canvas id="evolChart"></canvas>
+        <table style="margin-top:10px;">
+          <tr><th>Mês</th><th>Concluídos</th><th>Acumulado</th></tr>
+          <tr><td>Jan/2026</td><td>6</td><td>6</td></tr>
+          <tr><td>Fev/2026</td><td>18</td><td>24</td></tr>
+          <tr><td>Mar/2026</td><td>14</td><td>38</td></tr>
+          <tr><td>Abr/2026</td><td>14</td><td>52</td></tr>
+          <tr><td>Mai/2026</td><td>20</td><td>72</td></tr>
+          <tr><td>Jun/2026</td><td>11</td><td>83</td></tr>
+          <tr><td>Jul/2026</td><td>28</td><td>111</td></tr>
+          <tr><td>Ago/2026<span style="color:var(--muted);font-style:italic;"> (parcial)</span></td><td>11</td><td>122</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Entregas por Sistema — Período 01/07 a 17/08/2026</h2>
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+        <div class="kpi"><div class="num">12</div><div class="lbl">Protheus / ERP</div></div>
+        <div class="kpi"><div class="num">13</div><div class="lbl">WMS</div></div>
+        <div class="kpi"><div class="num">10</div><div class="lbl">BI</div></div>
+        <div class="kpi"><div class="num">4</div><div class="lbl">Portal Representante</div></div>
+      </div>
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
+        <div class="kpi"><div class="num">39</div><div class="lbl">Concluídos no período</div></div>
+        <div class="kpi"><div class="num">15</div><div class="lbl">Em desenvolvimento</div></div>
+        <div class="kpi"><div class="num">6</div><div class="lbl">BUGs corrigidos</div></div>
+        <div class="kpi"><div class="num">54</div><div class="lbl">Total movimentado</div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0;">Continuar navegando</h2>
+      <div class="quick-links">
+        <span class="see-more" onclick="showTab('concluidas', document.querySelector('[data-tab=concluidas]'))">Ver as 39 entregas concluídas →</span>
+        <span class="see-more" onclick="showTab('andamento', document.querySelector('[data-tab=andamento]'))">Ver o que está em andamento →</span>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ===================== ABA 2: ENTREGAS CONCLUÍDAS ===================== -->
+  <div class="tabpanel" id="tab-concluidas">
+    <section class="card">
+      <h2 style="margin-top:0;">Concluídos no Período (01/07 – 17/08) — 39 cards</h2>
+      <p class="note">Filtre por sistema, busque por palavra-chave ou clique no número do card para ver o resumo da solicitação.</p>
+
+      <div class="filters">
+        <button class="chip active" data-filter="all" onclick="setFilter('all', this)">Todos (39)</button>
+        <button class="chip" data-filter="erp" onclick="setFilter('erp', this)">Protheus / ERP (12)</button>
+        <button class="chip" data-filter="wms" onclick="setFilter('wms', this)">WMS (13)</button>
+        <button class="chip" data-filter="bi" onclick="setFilter('bi', this)">BI (10)</button>
+        <button class="chip" data-filter="portal" onclick="setFilter('portal', this)">Portal Representante (4)</button>
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="Buscar por título, número ou setor..." oninput="renderList()">
+        </div>
+      </div>
+
+      <div class="result-count" id="resultCount"></div>
+      <div id="listContainer"></div>
+    </section>
+  </div>
+
+  <!-- ===================== ABA 3: EM ANDAMENTO (KANBAN) ===================== -->
+  <div class="tabpanel" id="tab-andamento">
+    <section class="card">
+      <h2 style="margin-top:0;">Em Andamento — Kanban Atual (15 cards)</h2>
+      <div class="kanban">
+        <div class="kanban-col" data-status="afazer">
+          <div class="kanban-col-head"><span>A Fazer</span><span class="count">5</span></div>
+          <div id="col-afazer"></div>
+        </div>
+        <div class="kanban-col" data-status="andamento">
+          <div class="kanban-col-head"><span>Em Andamento</span><span class="count">9</span></div>
+          <div id="col-andamento"></div>
+        </div>
+        <div class="kanban-col" data-status="teste">
+          <div class="kanban-col-head"><span>Fase de Teste</span><span class="count">1</span></div>
+          <div id="col-teste"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <p><strong>Metodologia:</strong> dados coletados ao vivo via API do Trello (board "Implant. Off Paper", ID 6967a6302b20f97c451f09e2) em 17/08/2026. Contagem de cards por lista via GET /1/lists/{id}/cards; classificação por sistema via labels do board (PROTHEUS, WMS, B.I, PORTAL REPRES.); histórico de conclusão via GET /1/cards/{id}/actions?filter=updateCard:idList, card a card; resumos dos cards concluídos extraídos do campo de descrição de cada card no Trello.</p>
+    <p><strong>Limitações:</strong> números refletem retrato do momento (17/08/2026); cards arquivados/excluídos não entram na contagem; Agosto/2026 é mês parcial (17 dias); sem segmentação por prioridade ou tempo médio em cada status.</p>
+    <p>Play na Gestão — Estratégia e Capacitação · Relatório de Evolução Off Paper · Período: 01/07/2026 a 17/08/2026</p>
+  </footer>
+
+</div>
+
+<script>
+/* ============== DADOS ============== */
+var concluidos = [
+  {periodo:"01 Jul – 04 Jul · 5 concluídos", id:"141", sys:"bi", sysLbl:"BI", titulo:"Nova visão no BI: Vendas por Grupo (Internas/Representantes/Internet) com drill-down por vendedor e comparativo mensal", data:"01/07", bug:false, setor:"Não especificado", resumo:"Criar uma nova visão no BI com as informações de Vendas Internas, Vendas Representantes e Vendas Internet. A visão deve exibir a soma das vendas por grupo, com possibilidade de expandir cada grupo para ver o detalhamento por vendedor. As informações devem ser apresentadas mês a mês de forma comparativa."},
+  {periodo:"01 Jul – 04 Jul · 5 concluídos", id:"149", sys:"bi", sysLbl:"BI", titulo:"Nova Visão no BI Comercial: Acompanhamento de Metas Mensais por Representante", data:"01/07", bug:false, setor:"Não especificado", resumo:"Criar uma nova visão no BI do comercial para acompanhamento das metas mensais dos vendedores/representantes. Será necessário criar um campo no Protheus para registrar as metas mensais. O BI exibirá uma lista com: Representante | Meta (R$) | Valor Faturado | % Realizado."},
+  {periodo:"01 Jul – 04 Jul · 5 concluídos", id:"038", sys:"wms", sysLbl:"WMS", titulo:"Emitir etiqueta de endereçamento do produto no momento de criação do endereço", data:"01/07", bug:false, setor:"Não especificado", resumo:"Integração entre o processo de endereçamento das entradas e a emissão de etiquetas: ao endereçar a mercadoria recebida, o sistema já emite a etiqueta automaticamente, reduzindo o tempo de estocagem. Layout aprovado e testado em 01-07-2026."},
+  {periodo:"01 Jul – 04 Jul · 5 concluídos", id:"133", sys:"wms", sysLbl:"WMS", titulo:"Deixar endereçar no Picking como Pulmão", data:"01/07", bug:false, setor:"Expedição", resumo:"Como temos vários endereços de picking que ficam vazios, queremos endereçar nessas posições como se fosse pulmão."},
+  {periodo:"01 Jul – 04 Jul · 5 concluídos", id:"142", sys:"bi", sysLbl:"BI", titulo:"Alterar filtro de período no BI: padrão Mês Atual com expansão por ano", data:"03/07", bug:false, setor:"Não especificado", resumo:"Alterar o formato do filtro de período no BI para seguir o padrão de referência identificado em outro sistema (LIV). Ao acessar o BI, o filtro já exibe \"Mês Atual\" como seleção padrão."},
+
+  {periodo:"07 Jul – 11 Jul · 6 concluídos", id:"152", sys:"wms", sysLbl:"WMS", titulo:"Correção da Lógica de Seleção de Endereço de Picking — Rotatividade", data:"06/07", bug:false, setor:"Não especificado", resumo:"O WMS sempre direciona o separador para o primeiro endereço de picking, ignorando os outros 9 endereços que permanecem estocados e nunca são utilizados."},
+  {periodo:"07 Jul – 11 Jul · 6 concluídos", id:"030", sys:"wms", sysLbl:"WMS", titulo:"Painel com informações do separador, data, hora e status", data:"06/07", bug:false, setor:"Expedição", resumo:"Apresentar no dashboard da expedição informações sobre quem foi o separador, data e hora de separação e status."},
+  {periodo:"07 Jul – 11 Jul · 6 concluídos", id:"139", sys:"bi", sysLbl:"BI", titulo:"Valores recebidos por Estado", data:"06/07", bug:false, setor:"Financeiro", resumo:"No gráfico Valores Recebidos por Estado, dentro da visão Recebidos Históricos da aba Finanças, reduzir a escala pois quando tem um recebimento muito alto a avaliação dos demais fica comprometida."},
+  {periodo:"07 Jul – 11 Jul · 6 concluídos", id:"140", sys:"bi", sysLbl:"BI", titulo:"Saldos Bancários no BI", data:"06/07", bug:false, setor:"Financeiro", resumo:"Na aba Financeiro >> Saldos Bancários, não exibir as informações do Banco 002, pois foi cadastrado errado no sistema."},
+  {periodo:"07 Jul – 11 Jul · 6 concluídos", id:"158", sys:"wms", sysLbl:"WMS", titulo:'Ocultar aba "Clientes" do menu Pedido Venda no Portal WMS', data:"09/07", bug:false, setor:"Não especificado", resumo:'Na tela Separação/Expedição > Pedido Venda, existe uma aba "Clientes" que ao ser acessada retorna erro. A solicitação é ocultar essa aba do menu para evitar confusão dos usuários.'},
+  {periodo:"07 Jul – 11 Jul · 6 concluídos", id:"014", sys:"wms", sysLbl:"WMS", titulo:"Etiquetas para carregamento de pedidos após separação", data:"10/07", bug:false, setor:"Expedição", resumo:"Necessidade: emitir a etiqueta que acompanha a mercadoria após emissão da nota fiscal e conferência do pedido."},
+
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"155", sys:"wms", sysLbl:"WMS", titulo:"Formato de data incorreto na tela de Endereçamento do WMS", data:"13/07", bug:true, setor:"Não especificado", resumo:"A coluna Data exibia as datas no formato americano MM/DD/AAAA. O padrão correto para o Brasil é DD/MM/AAAA. Parametrizado o formato de exibição de datas nessa tela."},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"145", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Adequação do Protheus à Reforma Tributária: CBS e IBS", data:"15/07", bug:false, setor:"Não especificado", resumo:"O Protheus foi atualizado para suportar os novos tributos CBS e IBS, obrigatórios a partir de 2026 com a Reforma Tributária."},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"171", sys:"portal", sysLbl:"Portal Representante", titulo:"Pedido cancelado aparece como Faturado no Portal do Representante", data:"15/07", bug:true, setor:"Não especificado", resumo:'No Portal do Representante, pedidos cancelados no Protheus apareciam com status "Faturado" na aba Pedidos do Vendedor. Corrigida a inconsistência entre as visões.'},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"099", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Criar exceção fiscal para bonificação — SUFRAMA", data:"15/07", bug:false, setor:"Fiscal", resumo:"Quando o pedido for de bonificação, para os Estados cobertos pelo benefício do Suframa, parametrizada uma TES correspondente para não dar os descontos."},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"174", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Erro na sequência numérica do Cadastro de Clientes", data:"15/07", bug:true, setor:"Comercial", resumo:"O sequencial numérico de criação de cadastros de clientes estava repetindo o último número cadastrado. Corrigido."},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"154", sys:"wms", sysLbl:"WMS", titulo:"Erro 404 na tela inicial — Mapa de Pallets do Portal WMS", data:"16/07", bug:true, setor:"Não especificado", resumo:'Ao acessar o Portal WMS, a tela inicial "Visão Geral — Mapa de Pallets" sempre apresentava "Erro 404". Corrigido nos navegadores testados.'},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"170", sys:"bi", sysLbl:"BI", titulo:"Meta de faturamento no BI altera valor ao filtrar período parcial", data:"16/07", bug:true, setor:"Não especificado", resumo:'No BI, visão "Resumo por Vendedor", ao quebrar o filtro para um período parcial dentro do mesmo mês, o valor da Meta de Faturamento mudava incorretamente. Corrigido.'},
+  {periodo:"14 Jul – 21 Jul · 8 concluídos", id:"175", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Emitir boleto somente quando Forma de Pagamento for BOL", data:"16/07", bug:false, setor:"Financeiro", resumo:"Algumas condições de pagamento estavam gerando boletos mesmo sem necessidade. Aplicada regra para só emitir boleto quando a forma de pagamento estiver definida como tal."},
+
+  {periodo:"22 Jul – 27 Jul · 3 concluídos", id:"176", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Remover exceção fiscal de ST para SP (TES Inteligente)", data:"23/07", bug:false, setor:"Não especificado", resumo:"Excluída a exceção fiscal de Substituição Tributária (ST) aplicada a SP, já que não existe mais ST no estado."},
+  {periodo:"22 Jul – 27 Jul · 3 concluídos", id:"159", sys:"wms", sysLbl:"WMS", titulo:'Desativar "Conferência Saída" e manter apenas "Conferência Pedido" no Portal WMS', data:"27/07", bug:false, setor:"Não especificado", resumo:'A tela de Conferência Saída não apresentava as informações corretamente. Mantida apenas a Conferência Pedido, que funciona corretamente, para evitar uso indevido.'},
+  {periodo:"22 Jul – 27 Jul · 3 concluídos", id:"161", sys:"wms", sysLbl:"WMS", titulo:"Consulta Produtos WMS: ampliar campo de descrição e exportação para Excel", data:"27/07", bug:false, setor:"Não especificado", resumo:'O campo "Descrição" exibia o nome do produto truncado. Adicionado botão de exportação para Excel, alinhado com outras telas do sistema.'},
+
+  {periodo:"28 Jul – 31 Jul · 6 concluídos", id:"150", sys:"bi", sysLbl:"BI", titulo:"Dashboard Inicial no BI: Painel Executivo com KPIs Financeiros e Comerciais", data:"28/07", bug:false, setor:"Não especificado", resumo:'Criada a visão "Dashboard Inicial" no BI, consolidando os principais indicadores financeiros e comerciais da Off Paper em um único painel executivo.'},
+  {periodo:"28 Jul – 31 Jul · 6 concluídos", id:"147", sys:"portal erp", sysLbl:"Portal Representante + Protheus / ERP", titulo:"Pré-cadastro Simplificado para Feiras com Emissão de Orçamento e Conversão em Pedido", data:"30/07", bug:false, setor:"Não especificado", resumo:"Implementado fluxo de pré-cadastro simplificado para uso em feiras, com CNPJ, Razão Social, Nome Fantasia e Inscrição Estadual, permitindo emissão de orçamento para o prospect."},
+  {periodo:"28 Jul – 31 Jul · 6 concluídos", id:"156", sys:"wms", sysLbl:"WMS", titulo:"Exibir Status e informações de separação na visão agrupada de Pedidos de Venda do WMS", data:"30/07", bug:false, setor:"Não especificado", resumo:"A coluna Status aparecia vazia na visão agrupada de pedidos. Trazidas as informações de Usuário, Data e Hora de separação para essa visão."},
+  {periodo:"28 Jul – 31 Jul · 6 concluídos", id:"157", sys:"wms", sysLbl:"WMS", titulo:"Pedidos finalizados via Excluir Resíduo continuam aparecendo no Portal WMS", data:"30/07", bug:true, setor:"Não especificado", resumo:'Pedidos encerrados no Protheus através de "Excluir Resíduo" continuavam sendo exibidos no portal. Corrigido para não exibir mais pedidos finalizados dessa forma.'},
+  {periodo:"28 Jul – 31 Jul · 6 concluídos", id:"181", sys:"portal", sysLbl:"Portal Representante", titulo:"Orçamentos no Portal devem seguir a Tabela de Preço 019 (MG) ou 01 (demais estados)", data:"30/07", bug:false, setor:"Comercial", resumo:"Orçamentos feitos pelo Portal do Representante passam a considerar uma lista fixa de produtos com Tabela de Preço 019 para clientes em MG; os demais seguem a Tabela 01."},
+  {periodo:"28 Jul – 31 Jul · 6 concluídos", id:"180", sys:"portal", sysLbl:"Portal Representante", titulo:"ICMS Retido não calculado nos pedidos do Portal do Representante", data:"31/07", bug:true, setor:"Comercial", resumo:"Pedidos digitados pelo Portal do Representante não calculavam o ICMS Retido. Corrigido para considerar os dados cadastrados em UF x UF."},
+
+  {periodo:"01 Ago – 08 Ago · 5 concluídos", id:"178", sys:"erp portal", sysLbl:"Protheus / ERP + Portal Representante", titulo:"Regras de desconto e bloqueio de crédito — Condições de Pagamento Feira e Volta às Aulas", data:"04/08", bug:false, setor:"Comercial", resumo:"Criadas 5 novas condições de pagamento para as campanhas Feira e Volta às Aulas, com desconto progressivo por valor do pedido somado ao desconto por forma de pagamento."},
+  {periodo:"01 Ago – 08 Ago · 5 concluídos", id:"190", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Incluir data de emissão da Nota Fiscal na tabela SC5 (Pedido de Venda)", data:"04/08", bug:false, setor:"Comercial", resumo:"Incluída a data de emissão da nota fiscal na tabela de pedidos de venda (SC5), disponível junto com os dados do pedido."},
+  {periodo:"01 Ago – 08 Ago · 5 concluídos", id:"137", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Adicionar coluna Razão Social na tabela SFT (Livro Fiscal)", data:"05/08", bug:false, setor:"Não especificado", resumo:"Criada coluna com os dados de Razão Social do cliente ou fornecedor vinculado ao lançamento fiscal, dentro da tabela SFT (Livro Fiscal)."},
+  {periodo:"01 Ago – 08 Ago · 5 concluídos", id:"182", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Comissão deve considerar o vendedor real da venda (não o vendedor cadastrado no cliente)", data:"05/08", bug:false, setor:"Comercial", resumo:"Durante feiras, o cadastro do cliente é alterado temporariamente para outro vendedor. A comissão passa a ser calculada de acordo com o vendedor que realmente fez a venda."},
+  {periodo:"01 Ago – 08 Ago · 5 concluídos", id:"189", sys:"wms", sysLbl:"WMS", titulo:"Pedidos bloqueados não devem aparecer no coletor para conferência", data:"06/08", bug:false, setor:"Expedição", resumo:"Pedidos bloqueados (por regra, falta de estoque ou outro tipo de bloqueio) deixam de ser apresentados no coletor na etapa de conferência."},
+
+  {periodo:"10 Ago – 17 Ago · 6 concluídos", id:"164", sys:"bi", sysLbl:"BI", titulo:'"Clientes sem Compras": adicionar agrupamento por classificação com lista suspensa', data:"10/08", bug:false, setor:"Não especificado", resumo:'Na visão "Clientes sem Compras" do BI, incluída a possibilidade de agrupar clientes por classificação via lista suspensa (ex: 90 dias, 120 dias, 180 dias).'},
+  {periodo:"10 Ago – 17 Ago · 6 concluídos", id:"167", sys:"bi", sysLbl:"BI", titulo:"Resumo por Vendedor: ajustar visão de metas (Meta, Faturado, % Mensal, % Parcial, Positivação)", data:"10/08", bug:false, setor:"Não especificado", resumo:"Ajustada a visão de metas do Resumo por Vendedor: Meta de Faturamento, Valor Faturado, % Meta Mensal e % Meta Parcial (cálculo dinâmico, independente dos filtros de período da sessão)."},
+  {periodo:"10 Ago – 17 Ago · 6 concluídos", id:"168", sys:"bi", sysLbl:"BI", titulo:"Pedidos a Faturar: adicionar filtro por Status com totalizadores dinâmicos", data:"10/08", bug:false, setor:"Não especificado", resumo:'Adicionado filtro na coluna "Status" da visão "Pedidos a Faturar", permitindo selecionar estados específicos (Bloqueado por Crédito, Bloqueado por Estoque, Liberado em separação, etc.).'},
+  {periodo:"10 Ago – 17 Ago · 6 concluídos", id:"191", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Contas a pagar recorrentes lançadas via Pedido de Compra não aparecem no Novo Gestor Financeiro", data:"13/08", bug:false, setor:"Financeiro", resumo:"Lançamentos recorrentes (Água, Energia, Telefone) feitos via Pedido de Compra passam a aparecer corretamente no Novo Gestor Financeiro."},
+  {periodo:"10 Ago – 17 Ago · 6 concluídos", id:"126", sys:"erp", sysLbl:"Protheus / ERP", titulo:"CFOP 6201 e 6910 - CST 09 - SPED Contribuições", data:"13/08", bug:false, setor:"Fiscal - Sped Contribuições (PIS e Cofins)", resumo:"Corrigido o CST das CFOPs 6201 e 6910, que aparecia como 01 e 08 em algumas mercadorias, para o valor correto (09)."},
+  {periodo:"10 Ago – 17 Ago · 6 concluídos", id:"064", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Relatório de acompanhamento do estoque para análise de novas compras", data:"17/08", bug:false, setor:"Não especificado", resumo:"Criado relatório de acompanhamento do estoque para apoiar a análise de novas compras e a gestão de demanda para reposição."}
+];
+
+var kanban = {
+  afazer: [
+    {id:"118", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Registro E 300 — SPED", bug:false},
+    {id:"034", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Implantar o processo de compras", bug:false},
+    {id:"179", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Link de Pagamento por Cartão de Crédito para Vendas Internas — Integração com Itaú", bug:false},
+    {id:"173", sys:"wms", sysLbl:"WMS", titulo:'Coletor WMS: exibir detalhamento de estoque (saldo, empenhado, separado, saldo livre) em "Saldos por Endereço"', bug:false},
+    {id:"018", sys:"wms", sysLbl:"WMS", titulo:"Etiqueta para pedidos fracionados (conteúdo da caixa)", bug:false}
+  ],
+  andamento: [
+    {id:"028", sys:"wms", sysLbl:"WMS", titulo:"Apresentar a separação dos pedidos pela melhor rota dentro do galpão", bug:false},
+    {id:"198", sys:"portal", sysLbl:"Portal Representante", titulo:'Campo "Libera Estoque" (Sim/Não) no cadastro do produto para permitir pedido sem estoque', bug:false},
+    {id:"192", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Desconto de Duplicatas Antecipadas no Banco", bug:false},
+    {id:"148", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Integração de Cobrança (Boletos) com Bradesco via API — Substituição do Processo CNAB", bug:false},
+    {id:"193", sys:"erp", sysLbl:"Protheus / ERP", titulo:"Pedidos do Portal chegam no Protheus com data de emissão no formato americano (MM/DD → DD/MM)", bug:true},
+    {id:"160", sys:"wms", sysLbl:"WMS", titulo:"Campos Usuário, Data e Hora sem informação na tela de Movimento de Estoque do WMS", bug:true},
+    {id:"199", sys:"wms", sysLbl:"WMS", titulo:"Dashboard de Expedição no Portal WMS", bug:false},
+    {id:"165", sys:"bi", sysLbl:"BI", titulo:"Mapa de Vendas: indicador de cobertura e positivação da carteira por vendedor", bug:false},
+    {id:"166", sys:"bi", sysLbl:"BI", titulo:"Limitações de filtro e ordenação em Resumo por Vendedor e Mapa de Faturamento", bug:false}
+  ],
+  teste: [
+    {id:"135", sys:"portal", sysLbl:"Portal Representante", titulo:"Ocultar informações de redespacho no pedido quando frete CIF", bug:false}
+  ]
+};
+
+/* ============== TABS ============== */
+function showTab(name, btn){
+  document.querySelectorAll('.tabpanel').forEach(function(p){p.classList.remove('active');});
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ============== FILTRO + BUSCA (aba Concluídas) ============== */
+var currentFilter = 'all';
+function setFilter(f, btn){
+  currentFilter = f;
+  document.querySelectorAll('.chip').forEach(function(c){c.classList.remove('active');});
+  btn.classList.add('active');
+  renderList();
+}
+
+function tagHtml(sys, sysLbl){
+  var parts = sys.split(' ');
+  var labels = sysLbl.split(' + ');
+  var html = '';
+  for(var i=0;i<parts.length;i++){
+    html += '<span class="tag ' + parts[i] + '">' + (labels[i] || labels[0]) + '</span> ';
+  }
+  return html;
+}
+
+function renderList(){
+  var q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+  var container = document.getElementById('listContainer');
+  container.innerHTML = '';
+
+  var filtered = concluidos.filter(function(item){
+    var matchesFilter = currentFilter === 'all' || item.sys.split(' ').indexOf(currentFilter) !== -1;
+    var haystack = (item.id + ' ' + item.titulo + ' ' + item.setor + ' ' + item.sysLbl).toLowerCase();
+    var matchesSearch = q === '' || haystack.indexOf(q) !== -1;
+    return matchesFilter && matchesSearch;
+  });
+
+  document.getElementById('resultCount').textContent = filtered.length + ' entrega(s) encontrada(s)';
+
+  if(filtered.length === 0){
+    container.innerHTML = '<div class="empty-state">Nenhuma entrega encontrada com esses filtros.</div>';
+    return;
+  }
+
+  var periods = [];
+  var byPeriod = {};
+  filtered.forEach(function(item){
+    if(!byPeriod[item.periodo]){ byPeriod[item.periodo] = []; periods.push(item.periodo); }
+    byPeriod[item.periodo].push(item);
+  });
+
+  periods.forEach(function(periodo){
+    var pTitle = document.createElement('div');
+    pTitle.className = 'period-title';
+    pTitle.textContent = periodo.split('·')[0].trim() + ' · ' + byPeriod[periodo].length + ' nesta busca';
+    container.appendChild(pTitle);
+
+    var table = document.createElement('table');
+    var thead = document.createElement('tr');
+    thead.innerHTML = '<th></th><th>#</th><th>Sistema</th><th>Título</th><th>Data</th>';
+    table.appendChild(thead);
+
+    byPeriod[periodo].forEach(function(item){
+      var rowId = 's' + item.id + '_' + periodo.replace(/\W+/g,'');
+      var tr = document.createElement('tr');
+      var tituloHtml = item.bug ? '<span class="badge-bug">[BUG] ' + item.titulo + '</span>' : item.titulo;
+      tr.innerHTML = '<td class="expand-cell" onclick="toggleSummary(\'' + rowId + '\')"><span class="expand-icon" id="icon-' + rowId + '">+</span></td>' +
+        '<td class="card-num" onclick="toggleSummary(\'' + rowId + '\')">' + item.id + '</td>' +
+        '<td>' + tagHtml(item.sys, item.sysLbl) + '</td>' +
+        '<td>' + tituloHtml + '</td>' +
+        '<td>' + item.data + '</td>';
+      table.appendChild(tr);
+
+      var trSummary = document.createElement('tr');
+      trSummary.className = 'summary-row';
+      trSummary.id = rowId;
+      trSummary.innerHTML = '<td colspan="5"><span class="setor-lbl">Setor solicitante:</span> ' + item.setor + '<br><span class="setor-lbl">Resumo:</span> ' + item.resumo + '</td>';
+      table.appendChild(trSummary);
+    });
+
+    container.appendChild(table);
+  });
+}
+
+function toggleSummary(id){
+  var row = document.getElementById(id);
+  var icon = document.getElementById('icon-' + id);
+  if(!row) return;
+  var isOpen = row.classList.toggle('open');
+  if(icon) icon.textContent = isOpen ? '–' : '+';
+}
+
+/* ============== KANBAN (aba Em Andamento) ============== */
+function renderKanban(){
+  ['afazer','andamento','teste'].forEach(function(col){
+    var el = document.getElementById('col-' + col);
+    el.innerHTML = '';
+    kanban[col].forEach(function(item){
+      var div = document.createElement('div');
+      div.className = 'kanban-card';
+      var tituloHtml = item.bug ? '<span class="badge-bug">[BUG] ' + item.titulo + '</span>' : item.titulo;
+      div.innerHTML = '<div class="knum">#' + item.id + ' · ' + tagHtml(item.sys, item.sysLbl) + '</div><div class="ktitle">' + tituloHtml + '</div>';
+      el.appendChild(div);
+    });
+  });
+}
+
+renderList();
+renderKanban();
+
+/* ============== GRÁFICOS ============== */
+new Chart(document.getElementById('statusChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Backlog','A Fazer','Em andamento','Fase de teste','Concluído'],
+    datasets: [{
+      data: [45,5,9,1,122],
+      backgroundColor: ['#a8a6bd','#bde52c','#7ec8e3','#bc2e5a','#1f1c40'],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } }
+  }
+});
+
+new Chart(document.getElementById('evolChart'), {
+  data: {
+    labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago*'],
+    datasets: [
+      { type:'bar', label:'Concluídos no mês', data:[6,18,14,14,20,11,28,11], backgroundColor:'#1f1c40', borderRadius:4 },
+      { type:'line', label:'Acumulado', data:[6,24,38,52,72,83,111,122], borderColor:'#bc2e5a', backgroundColor:'#bc2e5a', tension:.3, yAxisID:'y1', pointRadius:4 }
+    ]
+  },
+  options: {
+    plugins: { legend: { position:'bottom' } },
+    scales: {
+      y: { beginAtZero:true, title:{display:true,text:'Concluídos no mês'} },
+      y1: { beginAtZero:true, position:'right', grid:{drawOnChartArea:false}, title:{display:true,text:'Acumulado'} }
+    }
+  }
+});
+</script>
+</body>
+</html>
